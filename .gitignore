@@ -7,3 +7,6 @@
 
 # Python compiled files
 *.py[cod]
+
+# Coverage reports
+.coverage

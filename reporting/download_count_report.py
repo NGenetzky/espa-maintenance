@@ -24,8 +24,6 @@ def mapper_count(line):
     # interested in and only return those in its output
     if not ApacheLog.is_successful_request(line):
         return 0
-    if not ApacheLog.is_production_order(line):
-        return 0
     return 1
 
 
@@ -40,9 +38,10 @@ def reducer(accum, map_out):
     return accum + map_out
 
 
-def report(lines, start_date, end_date):
+def report(lines, start_date, end_date, order_type='production'):
     '''Returns the number of downloads counted'''
-    mapper = ApacheLog.timefilter_decorator(mapper_count, start_date, end_date)
+    mapper0 = ApacheLog.timefilter_decorator(mapper_count, start_date, end_date)
+    mapper = ApacheLog.ordertype_filter_decorator(mapper0, order_type)
     map_out = map(mapper, lines)
     reduce_out = reduce(reducer, map_out, 0)
     return reduce_out
@@ -101,11 +100,15 @@ def parse_arguments():
                         help='The end date for the date range filter',
                         required=False, default=datetime.datetime.max,
                         type=isoformat_datetime)
+    parser.add_argument('--ordertype', dest='order_type',
+                        required=False, default='production',
+                        choices=['production', 'dswe', 'burned_area'] )
     return parser.parse_args()
 
 
 def main(iterable, start_date=datetime.datetime.min,
-         end_date=datetime.datetime.max):
+         end_date=datetime.datetime.max,
+         order_type='production'):
     # Setup the default logger format and level. log to STDOUT
     logging.basicConfig(format=('%(asctime)s.%(msecs)03d %(process)d'
                                 ' %(levelname)-8s'
@@ -113,11 +116,13 @@ def main(iterable, start_date=datetime.datetime.min,
                                 '%(funcName)s -- %(message)s'),
                         datefmt='%Y-%m-%d %H:%M:%S',
                         level=logging.INFO)
-    return layout(report(iterable, start_date, end_date))
+    return layout(report(iterable, start_date, end_date,
+                         order_type=order_type))
 
 
 if __name__ == '__main__':
     args = parse_arguments()
     print(main(sys.stdin.readlines(),
-               args.start_date, args.end_date))
+               args.start_date, args.end_date,
+               order_type=args.order_type))
 
