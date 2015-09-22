@@ -236,16 +236,30 @@ class Test_is_successful(unittest.TestCase):
 
 class Test_email_category(unittest.TestCase):
     def test_is_edu(self):
-        edu = ('''{0} - - [01/Jul/2015:13:09:14 -0500] "GET /status/{1}/rss/ HTTP/1.1" 404 114 "-" "Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 6.1; WOW64; Trident/7.0; SLCC2; .NET CLR 2.0.50727; .NET CLR 3.5.30729; .NET CLR 3.0.30729; Media Center PC 6.0; .NET4.0C; .NET4.0E; InfoPath.3; MS-RTC LM 8; Microsoft Outlook 14.0.7151; ms-office; MSOffice 14)"'''.format(default.ip, default.user_email)
+        edu = ('''{0} - - [01/Jul/2015:13:09:16 -0500] "GET /orders/{1}-06192015-150025/LT50370311998352-SC20150620065152.tar.gz HTTP/1.1" 200 284125751 "-" "Python-urllib/2.7"'''
+                .format(default.ip,
+                        'researcher@sdstate.edu')
                 )
+        email = helper.get_user_email(edu)
         value = helper.get_email_category(edu)
         self.assertEqual(value, '*.edu')
 
-    def test_is_gov(self):
-        gov = ('''{0} - - [01/Jul/2015:13:09:16 -0500] "GET /orders/{1}-06192015-150025/LT50370311998352-SC20150620065152.tar.gz HTTP/1.1" 200 284125751 "-" "Python-urllib/2.7"'''.format(default.ip, default.user_email)
+    def test_is_usgs_gov(self):
+        gov = ('''{0} - - [01/Jul/2015:13:09:16 -0500] "GET /orders/{1}-06192015-150025/LT50370311998352-SC20150620065152.tar.gz HTTP/1.1" 200 284125751 "-" "Python-urllib/2.7"'''
+               .format(default.ip,
+                       'ngenetzky@usgs.gov')
                )
         value = helper.get_email_category(gov)
-        self.assertEqual(value, '*.edu')
+        self.assertEqual(value, 'usgs.gov')
+
+    def test_is_nonusgs_gov(self):
+        gov = ('''{0} - - [01/Jul/2015:13:09:16 -0500] "GET /orders/{1}-06192015-150025/LT50370311998352-SC20150620065152.tar.gz HTTP/1.1" 200 284125751 "-" "Python-urllib/2.7"'''
+               .format(default.ip,
+                       'president@mvp.gov')
+               )
+        value = helper.get_email_category(gov)
+        self.assertEqual(value, 'not-usgs.gov')
+
 
 if __name__ == "__main__":
     unittest.main()
