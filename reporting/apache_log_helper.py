@@ -19,24 +19,18 @@ import urllib
 def fail_to_parse(value, line, strict=True ):
     '''Runs when any function fails to extract value
 
-    Precondition
+    If strict is False then silently fail. (return 'BAD_PARSE')
+    If strict is True then an exception is raised.
     '''
     # Get the logger
     logger = logging.getLogger(__name__)
     logger.debug('Failed to parse for {0} in <\n{1}>'.format(value, line))
-    if is_invalid_line(line) and not strict:
-        return 'BAD_PARSE'
+    #if is_invalid_line(line) and not strict:
+    #    return 'BAD_PARSE'
     if strict:
         raise Exception(line)
     else:
         return 'BAD_PARSE'
-
-
-def is_invalid_line(line):
-    # Invalid line could contain a user request with no spaces:
-    if(2==substring_between(line, ' "', '" ').count(' ')):
-        return False  # Should have 2 spaces
-    return True
 
 def verify_line(line):
     def is_valid(return_val):
@@ -46,9 +40,6 @@ def verify_line(line):
         if(return_val == datetime.datetime.max):
             return False
         return True
-
-    mylog = logging.getLogger(__name__)
-    mylog.debug(line)
 
     # Keys of this dict must be functions of in the namespace
     verify_dict = {
@@ -61,8 +52,14 @@ def verify_line(line):
                    'get_scene_id': is_valid(get_scene_id(line)),
                    'get_order_id': is_valid(get_order_id(line)),
                    }
+
     return verify_dict
 
+def is_invalid_line(line):
+    # Invalid line could contain a user request with no spaces:
+    if(2==substring_between(line, ' "', '" ').count(' ')):
+        return False  # Should have 2 spaces
+    return True
 
 def substring_between(s, start, finish):
     '''Find string between two substrings'''
@@ -118,19 +115,15 @@ def get_datetime(line):
         except ValueError:
             raise ValueError('Datetime is not format correctly in:{0}'.format(time_local))
 
-
 def get_date(line):
-    try:
-        return get_datetime(line).date()
-    except ValueError:
-        return fail_to_parse('date', line)
+    return get_datetime(line).date()
 
 
 def get_bytes(line):
     '''Obtain number of downloaded bytes from a line of text
 
     Precondition: line is a ' ' separated list of data.
-                Bytes downloaded is the second int in the items from 6 to 12.
+                Bytes downloaded is an int after the 8th space.
     Postcondition: return bytes_downloaded
     '''
     data = line.split()
@@ -143,8 +136,8 @@ def get_bytes(line):
 def get_rtcode(line):
     '''Obtain a return_code from a line of text
 
-    Precondition: line is a ' ' separated list of data.
-                Return code is the first int in the items from 6 to 11.
+    Precondition:line is a ' ' separated list of data.
+                 Return code is an int after the 9th space.
     Postcondition: return return_code
     '''
     data = line.split()
@@ -161,9 +154,15 @@ def get_user_email(line):
         is_production_order(line) == True
             If this is violated then the desired contents may not be present.
         user_email must be surrounded with very specific characters
+            These characters are defined by format of the filepath
             See code for details
     Postcondition:
         Returns the user_email
+    Issues:
+        Does not support emails that contain the following strings (exclude ''):
+            '-'
+            '" '
+            ' '
     '''
     request = substring_between(line, '] "', '" ')
     request = urllib.unquote(request)
@@ -215,7 +214,11 @@ def get_order_id(line):
 
 def is_successful_request(line):
     '''Extracts return code and then returns true if code indicates success'''
-    return (get_rtcode(line) in ['200', '206'])
+    return_code = get_rtcode(line)
+    if(return_code=='BAD_PARSE'):
+        return 'BAD_PARSE'
+    else:
+        return (return_code in ['200', '206'])
 
 
 def is_production_order(line):
@@ -232,5 +235,9 @@ def is_burned_area_order(line):
 
 def is_404_request(line):
     '''Extracts return code and returns true if indicates file-not-found'''
-    return (get_rtcode(line) in ['404'])
+    return_code = get_rtcode(line)
+    if(return_code=='BAD_PARSE'):
+        return 'BAD_PARSE'
+    else:
+        return (return_code in ['404'])
 
